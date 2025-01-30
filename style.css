@@ -13,12 +13,16 @@ ul {
     padding: 0;
 }
 
-li {
+.token-item {
     background: #f8f8f8;
     margin: 10px auto;
     padding: 15px;
     border-radius: 8px;
     width: 80%;
+    cursor: pointer;
+}
+
+.token-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -44,21 +48,25 @@ img {
     font-weight: bold;
 }
 
-.pagination {
-    margin-top: 20px;
+.token-details {
+    background: #fff;
+    padding: 10px;
+    margin-top: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    text-align: left;
 }
 
-button {
-    padding: 10px 15px;
-    margin: 5px;
-    cursor: pointer;
+.toggle-details {
+    padding: 5px 10px;
+    font-size: 18px;
     border: none;
     background: #007bff;
     color: white;
-    border-radius: 5px;
+    border-radius: 50%;
+    cursor: pointer;
 }
 
-button:disabled {
-    background: #ccc;
-    cursor: not-allowed;
+.toggle-details:focus {
+    outline: none;
 }
