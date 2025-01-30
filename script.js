@@ -19,10 +19,24 @@ document.addEventListener("DOMContentLoaded", () => {
         nextButton.disabled = currentPage >= totalPages;
     }
 
+    async function fetchTokenDetails(address) {
+        const apiUrl = `https://api.geckoterminal.com/api/v2/networks/bitrock/tokens/${address}`;
+        try {
+            const response = await fetch(apiUrl, { headers: { Accept: "application/json" } });
+            const data = await response.json();
+            return {
+                fdv: data.data.attributes.fully_diluted_valuation_usd || "N/A",
+                poolAddress: data.data.attributes.primary_pool_address || "N/A"
+            };
+        } catch (error) {
+            console.error(`Error fetching details for token ${address}:`, error);
+            return { fdv: "N/A", poolAddress: "N/A" };
+        }
+    }
+
     async function loadTokens() {
         tokenListElement.innerHTML = "<p>Loading...</p>";
 
-        // Get tokens for the current page
         const startIdx = (currentPage - 1) * tokensPerPage;
         const paginatedTokens = tokens.slice(startIdx, startIdx + tokensPerPage);
 
@@ -31,38 +45,65 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Fetch token prices
         const tokenAddresses = paginatedTokens.map(token => token.address).join(",");
-        const apiUrl = `https://api.geckoterminal.com/api/v2/simple/networks/bitrock/token_price/${tokenAddresses}?include_market_cap=true&include_24hr_vol=true`;
+        const priceApiUrl = `https://api.geckoterminal.com/api/v2/simple/networks/bitrock/token_price/${tokenAddresses}?include_market_cap=true&include_24hr_vol=true`;
 
         try {
-            const response = await fetch(apiUrl, { headers: { Accept: "application/json" } });
+            const response = await fetch(priceApiUrl, { headers: { Accept: "application/json" } });
             const data = await response.json();
             const tokenPrices = data.data.attributes.token_prices;
 
-            tokenListElement.innerHTML = ""; // Clear list
+            tokenListElement.innerHTML = "";
 
-            // Loop through paginated tokens and display
-            paginatedTokens.forEach(token => {
+            for (const token of paginatedTokens) {
                 const price = tokenPrices[token.address] || "N/A";
-
-                // Create token list item
                 const listItem = document.createElement("li");
+                listItem.classList.add("token-item");
+
                 listItem.innerHTML = `
-                    <img src="${token.image}" alt="Token Image">
-                    <div class="token-info">
-                        <strong>Address:</strong> ${token.address} <br>
-                        <strong>Price:</strong> $${parseFloat(price).toFixed(6)}
+                    <div class="token-header">
+                        <img src="${token.image}" alt="Token Image">
+                        <div class="token-info">
+                            <strong>Address:</strong> ${token.address} <br>
+                            <strong>Price:</strong> $${parseFloat(price).toFixed(6)}
+                        </div>
+                        <button class="toggle-details">+</button>
                     </div>
-                    <div class="links">
-                        <a href="${token.website}" target="_blank">Website</a>
-                        <a href="${token.telegram}" target="_blank">Telegram</a>
-                        <a href="${token.twitter}" target="_blank">Twitter</a>
+                    <div class="token-details" style="display: none;">
+                        <p>Loading details...</p>
                     </div>
                 `;
-                tokenListElement.appendChild(listItem);
-            });
 
+                const detailsDiv = listItem.querySelector(".token-details");
+                const toggleButton = listItem.querySelector(".toggle-details");
+
+                toggleButton.addEventListener("click", async () => {
+                    if (detailsDiv.style.display === "none") {
+                        detailsDiv.style.display = "block";
+                        toggleButton.textContent = "−";
+
+                        // Fetch additional details if not already loaded
+                        if (!detailsDiv.dataset.loaded) {
+                            const details = await fetchTokenDetails(token.address);
+                            detailsDiv.innerHTML = `
+                                <strong>FDV:</strong> $${details.fdv} <br>
+                                <strong>Pool Address:</strong> ${details.poolAddress} <br>
+                                <div class="links">
+                                    <a href="${token.website}" target="_blank">Website</a>
+                                    <a href="${token.telegram}" target="_blank">Telegram</a>
+                                    <a href="${token.twitter}" target="_blank">Twitter</a>
+                                </div>
+                            `;
+                            detailsDiv.dataset.loaded = "true";
+                        }
+                    } else {
+                        detailsDiv.style.display = "none";
+                        toggleButton.textContent = "+";
+                    }
+                });
+
+                tokenListElement.appendChild(listItem);
+            }
         } catch (error) {
             console.error("Error fetching token prices:", error);
             tokenListElement.innerHTML = "<p>Error loading token data.</p>";
